@@ -45,7 +45,7 @@ impl FloatingPointNumber {
     fn exponent(&self) -> u32 {
         let exp_bits = self.exponent_bits();
 
-        to_u32(exp_bits)
+        exp_bits.iter().fold(0, |acc, &bit| acc * 2 + bit as u32)
     }
 
     fn significand(&self) -> f64 {
@@ -59,26 +59,28 @@ impl FloatingPointNumber {
     }
 }
 
-fn to_u32(bits: &[bool]) -> u32 {
-    bits.iter().fold(0, |acc, &bit| acc * 2 + bit as u32)
-}
-
 fn concat<T: Clone>(a: &Vec<T>, b: &Vec<T>) -> Vec<T> {
     a.clone().into_iter().chain(b.clone().into_iter()).collect()
 }
 
-fn main() {
-    let sign = vec![false]; // positive
-    let exponent = vec![false, false, true, true, true]; // 7
-    let significand = vec![true, false, true]; // interpreted as 1.625 (1 + (1/2) + (1/8))
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // value should be 1 * 2^7 * 1.625 = 208
+    #[test]
+    fn test_as_f64() {
+        let sign = vec![false]; // positive
+        let exponent = vec![false, false, true, true, true]; // 7
+        let significand = vec![true, false, true]; // interpreted as 1.625 (1 + (1/2) + (1/8))
 
-    let number = FloatingPointNumber::new(
-        concat(&sign, &concat(&exponent, &significand)),
-        exponent.len(),
-        significand.len(),
-    );
+        // value should be 1 * 2^7 * 1.625 = 208
 
-    println!("{}", number.render());
+        let number = FloatingPointNumber::new(
+            concat(&sign, &concat(&exponent, &significand)),
+            exponent.len(),
+            significand.len(),
+        );
+
+        assert_eq!(number.as_f64(), 208.0);
+    }
 }
