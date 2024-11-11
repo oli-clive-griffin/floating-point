@@ -34,33 +34,23 @@ impl FloatingPointNumber {
         self.bits[0]
     }
 
-    fn significand_bits(&self) -> &[bool] {
-        &self.bits[self.exponent_size + 1..self.size]
-    }
-
-    fn exponent_bits(&self) -> &[bool] {
-        &self.bits[1..self.exponent_size + 1]
-    }
-
     fn exponent(&self) -> u32 {
-        let exp_bits = self.exponent_bits();
+        let exp_bits = &self.bits[1..self.exponent_size + 1];
 
         exp_bits.iter().fold(0, |acc, &bit| acc * 2 + bit as u32) - self.bias
     }
 
     fn significand(&self) -> f64 {
         let mut val = 1.0;
-        for (i, &bit) in self.significand_bits().iter().enumerate() {
+        let bits = &self.bits[self.exponent_size + 1..self.size];
+
+        for (i, &bit) in bits.iter().enumerate() {
             if bit {
                 val += 2.0_f64.powi(-((i + 1) as i32));
             }
         }
         val
     }
-}
-
-fn concat<T: Clone>(a: &Vec<T>, b: &Vec<T>) -> Vec<T> {
-    a.clone().into_iter().chain(b.clone().into_iter()).collect()
 }
 
 #[cfg(test)]
