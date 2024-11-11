@@ -2,6 +2,7 @@ struct FloatingPointNumber {
     size: usize,
     bits: Vec<bool>,
     exponent_size: usize,
+    bias: u32,
     // significand_size: usize,
 }
 
@@ -9,11 +10,13 @@ impl FloatingPointNumber {
     fn new(bits: Vec<bool>, exponent_size: usize, significand_size: usize) -> Self {
         // 1 bit for the sign
         let size = 1 + exponent_size + significand_size;
+        let bias = 2_u32.pow(exponent_size as u32 - 1) - 1;
 
         Self {
             size,
             bits,
             exponent_size,
+            bias,
             // significand_size,
         }
     }
@@ -21,10 +24,7 @@ impl FloatingPointNumber {
     /// renders using rust's floating point math, just for illustration
     pub fn as_f64(&self) -> f64 {
         let a = if self.sign() { -1.0 } else { 1.0 };
-
-        let exp = self.exponent();
-        let b = 2_f64.powi(exp as i32);
-
+        let b = 2_f64.powi(self.exponent() as i32);
         let c = self.significand();
 
         a * b * c
@@ -45,7 +45,7 @@ impl FloatingPointNumber {
     fn exponent(&self) -> u32 {
         let exp_bits = self.exponent_bits();
 
-        exp_bits.iter().fold(0, |acc, &bit| acc * 2 + bit as u32)
+        exp_bits.iter().fold(0, |acc, &bit| acc * 2 + bit as u32) - self.bias
     }
 
     fn significand(&self) -> f64 {
@@ -69,18 +69,28 @@ mod tests {
 
     #[test]
     fn test_as_f64() {
-        let sign = vec![false]; // positive
-        let exponent = vec![false, false, true, true, true]; // 7
-        let significand = vec![true, false, true]; // interpreted as 1.625 (1 + (1/2) + (1/8))
+        let bits = vec![false, true, false, false, true, true, true, false, true];
 
-        // value should be 1 * 2^7 * 1.625 = 208
+        // sign = 1
 
-        let number = FloatingPointNumber::new(
-            concat(&sign, &concat(&exponent, &significand)),
-            exponent.len(),
-            significand.len(),
-        );
+        // exponent:
+        // 10011 = 19
+        // bias = 2^(5-1) - 1 = 15
+        // exponent = 19 - 15 = 4
 
-        assert_eq!(number.as_f64(), 208.0);
+        // significand:
+        // 101 =
+        // 1 // hidden bit
+        // + (1 * (1/2))
+        // + (0 * (1/4))
+        // + (1 * (1/8))
+        // = 1.625
+
+        let exponent_size = 5;
+        let significand_size = 3;
+        let number = FloatingPointNumber::new(bits, exponent_size, significand_size);
+
+        // 1 * 2^4 * 1.625 = 26
+        assert_eq!(number.as_f64(), 26.0);
     }
 }
